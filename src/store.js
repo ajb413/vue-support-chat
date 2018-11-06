@@ -21,22 +21,29 @@ const mutations = {
     state.chatEngineReady = true;
     EventBus.$emit('chat-engine-ready', {});
   },
-  setCurrentChat(state, {chatKey}) {
-  console.log('currentcHat',chatKey);
-    state.currentChat = chatKey;
+  setCurrentChat(state, {key}) {
+    state.currentChat = key;
   },
   setFriends(state, {friends}) {
     for (let friend of friends) {
-      state.friends.push(friend);
+      let alreadyInArray = state.friends.find(alreadyFriend => {
+        return alreadyFriend.key === friend.key;
+      });
+
+      if (!alreadyInArray) {
+        state.friends.push(friend);
+      }
     }
   },
   newChat(state, {chat}) {
     if (!chat.key) {
-      throw Error('No chat.key defined on the new Chatengine chat Object');
+      console.error('No chat.key defined on the new Chatengine chat Object');
+      return;
     }
     state.chats[chat.key] = chat;
   },
   CHATENGINE_message(state, {event, sender, chat = {}, data, timetoken}) {
+    // sender.uuid !== 'support' ? console.log(sender.uuid) : null;
     let key = chat.key;
 
     if (!state.chatMessages[key]) {
@@ -53,12 +60,6 @@ const mutations = {
       who,
       data
     };
-
-    // Force stop the typing indicator
-    // if (event.typingIndicator && event.name !== 'Me') {
-    //   // Handler in Chat Log Component (components/ChatLog.vue)
-    //   EventBus.$emit('typing-stop', key);
-    // }
 
     state.chatMessages[key].push(message);
     state.chatMessages[key].sort((msg1, msg2) => {

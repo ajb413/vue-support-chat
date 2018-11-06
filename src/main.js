@@ -27,33 +27,22 @@ if (!publishKey || !subscribeKey) {
 const chatEngine = ChatEngineCore.create({
     publishKey,
     subscribeKey,
-}, {
-    authKey: 'auth-key'
 });
-
-// EventBus.$on('chat-engine-initialized', (payload) => {
-//     // ChatEngine injected into every component instance with the plugin
-//     // console.log('init', chatEngine, store)
-//     Vue.use(VueChatEngine, {
-//         chatEngine: payload.chatEngine,
-//         store: store
-//     });
-// });
 
 // Plugin ChatEngine to Vue. Store methods will fire on ChatEngine events.
 Vue.use(VueChatEngine, { chatEngine, store });
 
 function created() {
-  const view = window.location.href.includes('support') ? 'support' : 'customer';
-  EventBus.$emit('vue-initialized-' + view, { chatEngine, store });
+    const view = window.location.href.includes('support') ? 'support' : 'customer';
+    EventBus.$emit('vue-initialized-' + view, { chatEngine, store });
 }
 
 /* eslint-disable no-new */
 new Vue({
-  el: '#app',
-  store,
-  components: {App},
-  template: '<App/>',
-  created,
-  router,
+    el: '#app',
+    store,
+    components: {App},
+    template: '<App/>',
+    created,
+    router,
 });

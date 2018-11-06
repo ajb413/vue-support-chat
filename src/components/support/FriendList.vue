@@ -33,17 +33,17 @@ export default {
     };
   },
   methods: {
-    newChat(e) {
+    newChat() {
       if (!this.friendUuid) {
         return;
       }
 
       // Make a new chat key using the friend and client's ID.
       let uuids = [this.friendUuid, this.$store.state.me.uuid].sort();
-      let chatKey = uuids.join('-');
+      let key = uuids.join('-');
 
       // Don't make the same 1:1 chat if it already exists
-      if (this.$store.state.chats[chatKey]) {
+      if (this.$store.state.chats[key]) {
         this.friendUuid = '';
         return;
       }
@@ -53,7 +53,7 @@ export default {
         this.$store,
         this.$chatEngine,
         {
-          chatKey,
+          key,
           uuid: this.friendUuid,
         },
         true,

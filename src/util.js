@@ -6,17 +6,17 @@ import {EventBus} from './event-bus.js';
  *
  * @param {Object} store Global Vuex store object.
  * @param {Object} chatEngine ChatEngine client.
- * @param {Object} friend Friend settings like avatar, chatKey, name.
+ * @param {Object} friend Friend settings like avatar, key, name.
  * @param {Boolean} private_ True will make the Chat a private Chat.
  *
  * @return {Object} Chat object that was initialized and added to the store.
  */
 function newChatEngineChat(store, chatEngine, friend, private_) {
   // Make a new 1:1 private chat.
-  const newChat = new chatEngine.Chat(friend.chatKey, private_);
+  const newChat = new chatEngine.Chat(friend.key, private_);
 
   // Add the key to the Chat object for Vue UI use
-  newChat.key = friend.chatKey;
+  newChat.key = friend.key;
 
   // Add the Typing Indicator ChatEngine plugin to private 1:1 chats
   if (private_) {
@@ -92,9 +92,10 @@ function newUuid() {
 }
 
 /**
- * Make an HTTP POST request wrapped in an ES6 Promise.
+ * Make an HTTP request request wrapped in an ES6 Promise.
  *
  * @param {String} url URL of the resource that is being requested.
+ * @param {String} verb HTTP request verb (GET, POST, PUT , PATCH, DELETE)
  * @param {Object} options JSON Object with HTTP request options, "header"
  *     Object of possible headers to set, and a body Object of a POST body.
  *
@@ -102,11 +103,11 @@ function newUuid() {
  *     the response code is in the 200 range. Rejects with responce status text
  *     when the response code is outside of the 200 range.
  */
-function post(url, options) {
+function ajax(url, verb = 'GET', options) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
-    xhr.open('POST', url);
+    xhr.open(verb, url);
     xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
 
     for (let header in options.headers) {
@@ -149,6 +150,6 @@ function generateName() {
 export default {
   newChatEngineChat,
   newUuid,
-  post,
+  ajax,
   generateName,
 };

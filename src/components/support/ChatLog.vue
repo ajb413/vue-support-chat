@@ -49,20 +49,20 @@ export default {
     },
   },
   created() {
-    // const thisComponent = this;
+    const thisComponent = this;
 
     // Add a typing indicator visual to the UI
-    EventBus.$on('typing-start', (chatKey) => {
-      if (this.$store.state.currentChat === chatKey) {
-        // thisComponent.showTypingIndicator = true;
+    EventBus.$on('typing-start', (key) => {
+      if (this.$store.state.currentChat === key) {
+        thisComponent.showTypingIndicator = true;
         this.$nextTick(scrollBottom);
       }
     });
 
     // Remove the typing indicator visual from the UI
-    EventBus.$on('typing-stop', (chatKey) => {
-      if (this.$store.state.currentChat === chatKey) {
-        // thisComponent.showTypingIndicator = false;
+    EventBus.$on('typing-stop', (key) => {
+      if (this.$store.state.currentChat === key) {
+        thisComponent.showTypingIndicator = false;
       }
     });
 

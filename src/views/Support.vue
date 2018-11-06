@@ -1,5 +1,22 @@
 <template>
   <div>
+    <div
+      id="username-input-modal"
+      :class="hideSignInModal + ' modal-background'">
+        <div class="user-input-modal">
+            <h3>Support Sign In</h3>
+            <p>
+                Username is "support"
+                <br>
+                and password is "sesame"
+            </p>
+            <input v-model="username" autofocus placeholder="support" id="username-input" type="text" maxlength="80" class="modal-text-input">
+            <input v-model="password" @keyup.enter="signin" id="pass-input" type="password" maxlength="80" class="modal-text-input">
+            <div @click="signin" id="join-button" class="modal-button">
+                Sign In
+            </div>
+        </div>
+    </div>
     <chat-container/>
   </div>
 </template>
@@ -9,117 +26,210 @@ import ChatContainer from '@/components/support/ChatContainer';
 import {EventBus} from '../event-bus.js';
 import util from '../util';
 
-EventBus.$on('vue-initialized-support', ({ chatEngine, store }) => {
-  // Channel where each private chat's metadata is stored, so the support agent
-  // can see their chat history in the UI
-  // don't expose this to clients besides support user client
-  const privateChatKeyChannel = 'private-chat-keys-a1';
+const myPfuncAuthApi = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-de2639ee-d969-11e8-abf2-1e598b800e69/support-state';
+const signInRoute = '?route=get_auth_key';
+const stateRoute = '?route=chat_state';
+let store, chatEngine;
 
-  const me = {
-    name: 'support',
-    uuid: 'support',
-  };
-
-  chatEngine.connect(me.uuid, me);
-
-  document.addEventListener('beforeunload', function() {
-    chatEngine.disconnect();
-  });
-
-  chatEngine.on('$.ready', function(data) {
-    // store my new user as `me`
-    let me = data.me;
-    store.commit('setMe', {me});
-    // when a user comes online
-    chatEngine.on('$.online.join', (data) => {
-      let time = new Date();
-      let key = data.user.state.uuid;
-      let name = data.user.state.name;
-
-      if (store.state.chats[key] || key === 'support') {
-        return;
-      }
-
-      let newChat = {};
-
-      newChat.chatKey = newChat.uuid = key;
-      newChat.time = time.getTime();
-      newChat.name = name;
-
-      // Make the new 1:1 private Chat
-      util.newChatEngineChat(
-        store,
-        chatEngine,
-        newChat,
-        true,
-      );
-    });
-
-    getCustomerChats().then((chats) => {
-      chats.forEach((chat) => {
-        chat = chat.entry;
-        let key = chat.uuid;
-
-        if (store.state.chats[key] || key === 'support') {
-          return;
-        }
-
-        // Add the chat key to the Chat object for Vue UI use
-        chat.chatKey = key;
-
-        // Make the new 1:1 private Chat
-        const myChat = util.newChatEngineChat(
-          store,
-          chatEngine,
-          chat,
-          true,
-        );
-
-        myChat.on('$.connected', () => {
-          store.commit('setCurrentChat', {
-            chatKey: key,
-          });
-
-          store.commit('setChatEngineReady', {});
-
-          store.state.chats[key].search({
-            event: 'message',
-            limit: 100,
-            reverse: true
-          });
-        });
-      });
-    });
-  });
-
-  function getCustomerChats(count) {
-    return new Promise((resolve, reject) => {
-      count = count || 100;
-      let oldAuthKey = chatEngine.pubnub.getAuthKey();
-      chatEngine.pubnub.setAuthKey('support-user-auth-key');
-      chatEngine.pubnub.history(
-        {
-          channel: privateChatKeyChannel,
-          reverse: true,
-          count: count,
-        },
-        function (status, response) {
-          if (status.statusCode === 200) {
-            resolve(response.messages);
-          } else {
-            reject(status);
-          }
-        }
-      );
-      chatEngine.pubnub.setAuthKey(oldAuthKey);
-    });
-  }
+EventBus.$on('vue-initialized-support', (payload) => {
+  chatEngine = payload.chatEngine;
+  store = payload.store;
 });
 
 export default {
   name: 'Support',
   components: {
     ChatContainer,
+  },
+  data() {
+    return {
+      username: '',
+      password: '',
+      signedIn: false,
+      basicAuthToken: '',
+    }
+  },
+  mounted(){
+    let componentThis = this;
+    
+      // Channel where each private chat's metadata is stored, so the support agent
+      // can see their chat history in the UI
+      // don't expose this to clients besides support user client
+      console.log('vue-initialized-support');
+      const privateChatKeyChannel = 'private-chat-keys-a1';
+
+      const supportUser = {
+        name: 'support',
+        uuid: 'support',
+      };
+
+      EventBus.$on('init-support-chat', () => {
+        console.log('init-support-chat');
+        chatEngine.connect(supportUser.uuid, supportUser, 'support-user-auth-key');
+
+        document.addEventListener('beforeunload', function() {
+          chatEngine.disconnect();
+        });
+
+        chatEngine.on('$.ready', function(data) {
+          // store my new user as `me`
+          let me = data.me;
+          me._setState = false;
+          store.commit('setMe', {me});
+          console.log('new   support user state', me.state);
+
+          componentThis.getSupportUserState().then((newMe) => {
+            console.log('stored support user state', newMe);
+            me.update(newMe);
+            console.log('updated   support user state', me.state, newMe);
+
+            let keys = Object.keys(newMe.chats);
+            let friends = [];
+
+            keys.forEach((key) => {
+              if (!store.state.chats[key]) {
+                let chat = util.newChatEngineChat(
+                  store,
+                  chatEngine,
+                  newMe.chats[key],
+                  true,
+                );
+
+                chat.on('$.connected', () => {
+                  store.state.chats[key].search({
+                    event: 'message',
+                    limit: 100,
+                    reverse: true
+                  });
+                });
+
+              }
+
+              friends.push(newMe.chats[key]);
+            });
+
+            // Add this friend to the client's friend list
+            store.commit('setFriends', {
+              friends,
+            });
+
+            store.commit('setMe', {me});
+          });
+
+          // when a user comes online
+          chatEngine.on('$.online.join', (data) => {
+            let time = new Date();
+            let key = data.user.state.uuid;
+            let name = data.user.state.name;
+
+            // If the chat already exists, don't make a new one
+            if (store.state.chats[key] || key === 'support') {
+              return;
+            }
+
+            let newChat = {};
+
+            newChat.key = newChat.uuid = key;
+            newChat.time = time.getTime();
+            newChat.name = name;
+
+            // Add this chat to the support user object
+            if (me.state.chats) {
+              me.state.chats[key] = {
+                key,
+                name,
+                time
+              };
+            } else {
+              me.state.chats = {};
+              me.state.chats[key] = {
+                key,
+                name,
+                time
+              };
+            }
+
+            // me.update(me.state);
+            componentThis.setSupportUserState(me.state)
+            .then((s) => {
+              console.log('did set support user state', s);
+              me.update(s);
+              store.commit('setMe', {me});
+            });
+
+
+            // Make the new 1:1 private Chat
+            let chat = util.newChatEngineChat(
+              store,
+              chatEngine,
+              newChat,
+              true,
+            );
+
+            chat.on('$.connected', () => {
+              store.state.chats[key].search({
+                event: 'message',
+                limit: 100,
+                reverse: true
+              });
+            });
+          });
+        });
+      });
+  },
+  methods: {
+    basic(username, password) {
+        return `Basic ${window.btoa(`${username}:${password}`)}`;
+    },
+    setSupportUserState(userState) {
+      return new Promise((resolve, reject) => {
+        util.ajax(myPfuncAuthApi + stateRoute, 'POST', {
+          headers: {
+            Authorization: this.basicAuthToken
+          },
+          body: userState
+        }).then((response) => {
+          console.log('setSupportChats',response);
+          return resolve(response);
+        }).catch((err) => {
+          console.error('setSupportChats', err);
+          return reject();
+        });
+      });
+    },
+    getSupportUserState() {
+      return new Promise((resolve, reject) => {
+        util.ajax(myPfuncAuthApi + stateRoute, 'GET', {
+          headers: {
+            Authorization: this.basicAuthToken
+          }
+        }).then((response) => {
+          console.log('getSupportChats',response);
+          return resolve(response);
+        }).catch((err) => {
+          console.error('getSupportChats', err)
+          return reject();
+        });
+      });
+    },
+    signin() {
+      this.basicAuthToken = this.basic(this.username, this.password);
+      util.ajax(myPfuncAuthApi + signInRoute, 'GET', {
+        headers: {
+          Authorization: this.basicAuthToken
+        }
+      }).then((response) => {
+        this.signedIn = true;
+        EventBus.$emit('init-support-chat');
+      }).catch((err) => {
+        // Display a wrong password error to the user
+      });
+    }
+  },
+  computed: {
+    hideSignInModal() {
+      return this.signedIn ? 'hide' : '';
+    },
   },
 };
 
@@ -132,7 +242,90 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #454d54;
-  margin-top: 60px;
+}
+
+#app div.hide {
+  display: none;
+}
+
+body {
+    margin: 0px;
+}
+
+.modal-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 2;
+}
+
+.user-input-modal h3 {
+    margin: 15px auto;
+}
+
+.user-input-modal p {
+    margin: 0px auto 20px auto;
+}
+
+.user-input-modal {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 400px;
+    min-width: 300px;
+    overflow: hidden;
+    margin: auto;
+    padding: 15px;
+    box-sizing: border-box;
+    background-color: #363D48;
+    border: solid 1px #e6e6e6;
+    border-radius: 8px;
+    color: #FFFFFF;
+    text-align: center;
+}
+
+.user-input-modal .modal-button {
+    display: inline-block;
+    width: 100px;
+    margin: 0px 10px 20px 10px;
+    padding: 5px;
+    box-sizing: border-box;
+    background-color: #101620;
+    color: #e6e6e6;
+    border: solid 1px #6D7582;
+    border-radius: 3px;
+    user-select: none;
+    cursor: pointer;
+}
+
+.user-input-modal .modal-button:hover {
+    color: #FFFFFF;
+    border: solid 1px #e6e6e6;
+}
+
+.user-input-modal .modal-button.disabled {
+    opacity: 0.2;
+}
+
+.user-input-modal .modal-button.disabled:hover {
+    color: #e6e6e6;
+    border: solid 1px #6D7582;
+}
+
+.user-input-modal .modal-text-input {
+    width: 80%;
+    padding: 0px 5px;
+    margin: 0px auto 20px auto;
+    line-height: 24pt;
+    outline: none;
+    font-size: 14px;
+    border: solid 1px #e6e6e6;
+    background-color: #6D7582;
+    border-radius: 3px;
+    color: #FFFFFF;
+    font-family: inherit;
+    text-align: center;
 }
 
 /* Loading Ripple Animation */

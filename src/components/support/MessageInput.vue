@@ -22,7 +22,7 @@ export default {
     const thisComponent = this;
 
     // Focus on the text input, and clear it, when a chat is selected
-    EventBus.$on('focus-input', (event) => {
+    EventBus.$on('focus-input', () => {
       thisComponent.$refs.messageInput.focus();
       thisComponent.$refs.messageInput.value = '';
     });
@@ -37,12 +37,13 @@ export default {
       const currentChatObject = state.chats[state.currentChat];
 
       // Trigger the typing indicator start
-      // if (
-      //   currentChatObject.typingIndicator &&
-      //   event.key !== 'Enter'
-      // ) {
-      //   currentChatObject.typingIndicator.startTyping();
-      // }
+      if (
+        currentChatObject &&
+        currentChatObject.typingIndicator &&
+        event.key !== 'Enter'
+      ) {
+        currentChatObject.typingIndicator.startTyping();
+      }
     },
     submitMessage(event) {
       if (!event.shiftKey) {
@@ -60,9 +61,9 @@ export default {
       const currentChatObject = state.chats[state.currentChat];
 
       // Only display typing indicator in private 1:1 chats
-      // if (currentChatObject.isPrivate && currentChatObject.typingIndicator) {
-      //   currentChatObject.typingIndicator.stopTyping();
-      // }
+      if (currentChatObject.isPrivate && currentChatObject.typingIndicator) {
+        currentChatObject.typingIndicator.stopTyping();
+      }
 
       // Send textarea input as message with ChatEngine
       // Use Vuex (in store.js) to send the message

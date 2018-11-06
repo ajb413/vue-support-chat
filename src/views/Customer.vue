@@ -14,7 +14,7 @@
       :close="closeChat"
       :open="openChat"
       :showEmoji="true"
-      :showFile="true"
+      :showFile="false"
       :showTypingIndicator="showTypingIndicator"
       :colors="colors"
       :alwaysScrollToBottom="alwaysScrollToBottom"
@@ -24,19 +24,15 @@
 
 <script>
 import chatParticipants from '../chatProfiles'
-import Header from '../components/Header.vue';
-import Footer from '../components/Footer.vue';
-import TestArea from '../components/TestArea.vue';
 import availableColors from '../colors';
 
 import {EventBus} from '../event-bus.js';
 import util from '../util';
 
+const myPfuncAuthApi = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-de2639ee-d969-11e8-abf2-1e598b800e69/support-state';
+const stateRoute = '?route=chat_state';
+
 EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
-  // Channel where each private chat's metadata is stored, so the support agent
-  // can see their chat history in the UI
-  // don't expose this to clients besides support user client
-  const privateChatKeyChannel = 'private-chat-keys-a1';
   const view = window.location.href.includes('support') ? 'support' : 'customer';
 
   let myUuid = window.localStorage.getItem('chat_engine_customer_uuid');
@@ -65,7 +61,7 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
    * Execute this function when the Vue instance is created
    */
 
-  chatEngine.connect(me.uuid, me);
+  chatEngine.connect(me.uuid, me, 'customer-auth-key');
 
   document.addEventListener('beforeunload', function() {
     chatEngine.disconnect();
@@ -77,15 +73,16 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
     store.commit('setMe', {me});
 
     // Update support admin's chat history using a PubNub channel as the log
-    submitChatKey(me.uuid);
+    // submitChatKey(me.uuid);
 
     // Make the new 1:1 private Chat
     let myChat = util.newChatEngineChat(
       store,
       chatEngine,
       {
-        chatKey: me.uuid,
+        key: me.uuid,
         uuid: me.uuid,
+        name: me.name
       },
       true,
     );
@@ -93,36 +90,31 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
     myChat.on('$.connected', () => {
 
       store.commit('setCurrentChat', {
-        chatKey: me.uuid,
+        key: me.uuid,
+      });
+
+      // Gives this chat information to the support chat user,
+      // even if they are offline
+      addNewUserToSupportChats({
+        key: me.uuid,
+        uuid: me.uuid,
+        name: me.name
       });
 
       store.commit('setChatEngineReady', {});
     });
   });
-
-
-  function submitChatKey() {
-    let oldAuthKey = chatEngine.pubnub.getAuthKey();
-    chatEngine.pubnub.setAuthKey('customer-auth-key');
-    chatEngine.pubnub.publish({
-      channel : privateChatKeyChannel,
-      message: { 
-        uuid: myUuid,
-        name: myName,
-        time: new Date().getTime()
-      }
-    });
-    chatEngine.pubnub.setAuthKey(oldAuthKey);
-  }
 });
+
+function addNewUserToSupportChats(userState) {
+  util.ajax(myPfuncAuthApi + stateRoute, 'PUT', {
+    body: userState
+  })
+}
 
 export default {
   name: 'Customer',
-  components: {
-    Header,
-    Footer,
-    TestArea
-  },
+  components: {},
   data() {
     return {
       participants: chatParticipants,
@@ -137,6 +129,10 @@ export default {
       alwaysScrollToBottom: true
     }
   },
+  mounted() {
+    const textInput = document.getElementsByClassName('sc-user-input--text')[0];
+    textInput.onkeyup = this.handleTyping;
+  },
   created() {
     this.setColor('blue');
 
@@ -149,10 +145,22 @@ export default {
     ceCreated() {
       const state = this.$store.state;
       const key = state.currentChat;
+
+      // Get old messages from the ChatEngine Chat using PubNub History
       state.chats[key].search({
         event: 'message',
         limit: 100,
       });
+
+      // Register the typing indicator events
+      EventBus.$on('typing-start', () => {
+        this.showTypingIndicator = 'support';
+      });
+
+      EventBus.$on('typing-stop', () => {
+        this.showTypingIndicator = '';
+      });
+
     },
     sendMessage(messageObject) {
       const state = this.$store.state;
@@ -188,8 +196,7 @@ export default {
         // this.messageList = [ ...this.messageList, messageObject ]
       }
     },
-    handleTyping (text) {
-      this.showTypingIndicator = text.length > 0 ? this.participants[this.participants.length - 1].id : '';
+    handleTyping () {
       const state = this.$store.state;
       const currentChatObject = state.chats[state.currentChat];
 
@@ -214,7 +221,7 @@ export default {
     setColor (color) {
       this.colors = this.availableColors[color]
       this.chosenColor = color
-    }
+    },
   },
   computed: {
     linkColor() {

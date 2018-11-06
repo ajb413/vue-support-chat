@@ -30,15 +30,15 @@ export default {
   methods: {
     onFocus(event) {
       EventBus.$emit('focus-input', event);
-      this.$store.commit('setCurrentChat', {chatKey: this.chatKey});
+      this.$store.commit('setCurrentChat', {key: this.key});
     },
   },
   computed: {
-    chatKey() {
-      return this.$store.state.friends[this.index].chatKey;
+    key() {
+      return this.$store.state.friends[this.index].key;
     },
     lastMessage() {
-      let messages = this.$store.state.chatMessages[this.chatKey];
+      let messages = this.$store.state.chatMessages[this.key];
 
       if (messages && messages.length) {
         return messages[messages.length-1].data.text;
@@ -56,7 +56,7 @@ export default {
       }
     },
     selected() {
-      return this.$store.state.currentChat === this.chatKey ? 'selected' : '';
+      return this.$store.state.currentChat === this.key ? 'selected' : '';
     },
   },
 };
