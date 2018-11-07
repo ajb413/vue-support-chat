@@ -1,9 +1,11 @@
 <template>
   <div>
-    <!-- :onMessageWasSent="onMessageWasSent" -->
     <h3>Your Website Here</h3>
-    <p>
-      Customers can chat with a support team member using the button in the lower right corner of the page.
+    <p class="website-text">
+      <b>Customers</b> can chat with a support team member using the button in the lower right corner of the page.
+      <br>
+      <br>
+      <b>Support Team</b> members at your company can <router-link to="/support">sign in to support chat duty here</router-link>.
     </p>
     <beautiful-chat
       :participants="participants"
@@ -29,7 +31,6 @@ import availableColors from '../colors';
 import {EventBus} from '../event-bus.js';
 import util from '../util';
 
-const myPfuncAuthApi = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-de2639ee-d969-11e8-abf2-1e598b800e69/support-state';
 const stateRoute = '?route=chat_state';
 
 EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
@@ -42,26 +43,22 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
   if ((!myUuid || !myName) && view === 'customer') {
     myUuid = util.newUuid();
     myName = util.generateName();
+    console.log('no name', myUuid, myName)
     localStorage.setItem('chat_engine_customer_uuid', myUuid);
     localStorage.setItem('chat_engine_customer_name', myName);
   }
 
-  // This would ideally be set by a view that is behind basic auth
-  if (view === 'support') {
-    myUuid = 'support';
-    myName = 'support';
-  }
-
-  const me = {
+  const meState = {
     name: myName,
     uuid: myUuid,
+    key: myUuid,
   };
 
   /**
    * Execute this function when the Vue instance is created
    */
 
-  chatEngine.connect(me.uuid, me, 'customer-auth-key');
+  chatEngine.connect(meState.uuid, meState, 'customer-auth-key');
 
   document.addEventListener('beforeunload', function() {
     chatEngine.disconnect();
@@ -72,18 +69,11 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
     let me = data.me;
     store.commit('setMe', {me});
 
-    // Update support admin's chat history using a PubNub channel as the log
-    // submitChatKey(me.uuid);
-
     // Make the new 1:1 private Chat
     let myChat = util.newChatEngineChat(
       store,
       chatEngine,
-      {
-        key: me.uuid,
-        uuid: me.uuid,
-        name: me.name
-      },
+      meState,
       true,
     );
 
@@ -96,9 +86,10 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
       // Gives this chat information to the support chat user,
       // even if they are offline
       addNewUserToSupportChats({
-        key: me.uuid,
-        uuid: me.uuid,
-        name: me.name
+        key: myUuid,
+        uuid: myUuid,
+        name: myName,
+        time: new Date()
       });
 
       store.commit('setChatEngineReady', {});
@@ -107,9 +98,9 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
 });
 
 function addNewUserToSupportChats(userState) {
-  util.ajax(myPfuncAuthApi + stateRoute, 'PUT', {
+  util.ajax(window.$supportAPI + stateRoute, 'PUT', {
     body: userState
-  })
+  });
 }
 
 export default {
@@ -119,7 +110,6 @@ export default {
     return {
       participants: chatParticipants,
       titleImageUrl: '',
-      // messageList: [],
       newMessagesCount: 0,
       isChatOpen: false,
       showTypingIndicator: '',
@@ -240,5 +230,9 @@ export default {
 <style>
   div.sc-chat-window.opened {
     text-align: left;
+  }
+
+  h3, .website-text {
+    margin: 80px 0px;
   }
 </style>

@@ -17,6 +17,7 @@
             </div>
         </div>
     </div>
+    <div class="spacer"></div>
     <chat-container/>
   </div>
 </template>
@@ -26,7 +27,6 @@ import ChatContainer from '@/components/support/ChatContainer';
 import {EventBus} from '../event-bus.js';
 import util from '../util';
 
-const myPfuncAuthApi = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-de2639ee-d969-11e8-abf2-1e598b800e69/support-state';
 const signInRoute = '?route=get_auth_key';
 const stateRoute = '?route=chat_state';
 let store, chatEngine;
@@ -51,131 +51,119 @@ export default {
   },
   mounted(){
     let componentThis = this;
-    
-      // Channel where each private chat's metadata is stored, so the support agent
-      // can see their chat history in the UI
-      // don't expose this to clients besides support user client
-      console.log('vue-initialized-support');
-      const privateChatKeyChannel = 'private-chat-keys-a1';
 
-      const supportUser = {
-        name: 'support',
-        uuid: 'support',
-      };
+    const supportUser = {
+      name: 'support',
+      uuid: 'support',
+    };
 
-      EventBus.$on('init-support-chat', () => {
-        console.log('init-support-chat');
-        chatEngine.connect(supportUser.uuid, supportUser, 'support-user-auth-key');
+    EventBus.$on('init-support-chat', () => {
+      chatEngine.connect(supportUser.uuid, supportUser, 'support-user-auth-key');
 
-        document.addEventListener('beforeunload', function() {
-          chatEngine.disconnect();
+      document.addEventListener('beforeunload', function() {
+        chatEngine.disconnect();
+      });
+
+      chatEngine.on('$.ready', function(data) {
+        // store my new user as `me`
+        let me = data.me;
+        me._setState = false;
+        store.commit('setMe', {me});
+
+        componentThis.getSupportUserState().then((newMe) => {
+          me.update(newMe);
+
+          let keys = Object.keys(newMe.chats);
+          let friends = [];
+
+          keys.forEach((key) => {
+            if (!store.state.chats[key]) {
+              let chat = util.newChatEngineChat(
+                store,
+                chatEngine,
+                newMe.chats[key],
+                true,
+              );
+
+              chat.on('$.connected', () => {
+                store.state.chats[key].search({
+                  event: 'message',
+                  limit: 100,
+                  reverse: true
+                });
+              });
+
+            }
+
+            friends.push(newMe.chats[key]);
+          });
+
+          // Add this friend to the client's friend list
+          store.commit('setFriends', {
+            friends,
+          });
+
+          store.commit('setMe', {me});
         });
 
-        chatEngine.on('$.ready', function(data) {
-          // store my new user as `me`
-          let me = data.me;
-          me._setState = false;
-          store.commit('setMe', {me});
-          console.log('new   support user state', me.state);
+        // when a user comes online
+        chatEngine.on('$.online.join', (data) => {
+          let time = new Date();
+          let key = data.user.state.uuid;
+          let name = data.user.state.name;
 
-          componentThis.getSupportUserState().then((newMe) => {
-            console.log('stored support user state', newMe);
-            me.update(newMe);
-            console.log('updated   support user state', me.state, newMe);
+          // If the chat already exists, don't make a new one
+          if (store.state.chats[key] || key === 'support') {
+            return;
+          }
 
-            let keys = Object.keys(newMe.chats);
-            let friends = [];
+          let newChat = {};
 
-            keys.forEach((key) => {
-              if (!store.state.chats[key]) {
-                let chat = util.newChatEngineChat(
-                  store,
-                  chatEngine,
-                  newMe.chats[key],
-                  true,
-                );
+          newChat.key = newChat.uuid = key;
+          newChat.time = time.getTime();
+          newChat.name = name;
 
-                chat.on('$.connected', () => {
-                  store.state.chats[key].search({
-                    event: 'message',
-                    limit: 100,
-                    reverse: true
-                  });
-                });
+          // Add this chat to the support user object
+          if (me.state.chats) {
+            me.state.chats[key] = {
+              key,
+              name,
+              time
+            };
+          } else {
+            me.state.chats = {};
+            me.state.chats[key] = {
+              key,
+              name,
+              time
+            };
+          }
 
-              }
-
-              friends.push(newMe.chats[key]);
-            });
-
-            // Add this friend to the client's friend list
-            store.commit('setFriends', {
-              friends,
-            });
-
+          componentThis.setSupportUserState(me.state)
+          .then((s) => {
+            me.update(s);
             store.commit('setMe', {me});
           });
 
-          // when a user comes online
-          chatEngine.on('$.online.join', (data) => {
-            let time = new Date();
-            let key = data.user.state.uuid;
-            let name = data.user.state.name;
 
-            // If the chat already exists, don't make a new one
-            if (store.state.chats[key] || key === 'support') {
-              return;
-            }
+          // Make the new 1:1 private Chat
+          let chat = util.newChatEngineChat(
+            store,
+            chatEngine,
+            newChat,
+            true,
+          );
 
-            let newChat = {};
-
-            newChat.key = newChat.uuid = key;
-            newChat.time = time.getTime();
-            newChat.name = name;
-
-            // Add this chat to the support user object
-            if (me.state.chats) {
-              me.state.chats[key] = {
-                key,
-                name,
-                time
-              };
-            } else {
-              me.state.chats = {};
-              me.state.chats[key] = {
-                key,
-                name,
-                time
-              };
-            }
-
-            // me.update(me.state);
-            componentThis.setSupportUserState(me.state)
-            .then((s) => {
-              console.log('did set support user state', s);
-              me.update(s);
-              store.commit('setMe', {me});
-            });
-
-
-            // Make the new 1:1 private Chat
-            let chat = util.newChatEngineChat(
-              store,
-              chatEngine,
-              newChat,
-              true,
-            );
-
-            chat.on('$.connected', () => {
-              store.state.chats[key].search({
-                event: 'message',
-                limit: 100,
-                reverse: true
-              });
+          chat.on('$.connected', () => {
+            store.state.chats[key].search({
+              event: 'message',
+              limit: 100,
+              reverse: true
             });
           });
         });
       });
+    });
   },
   methods: {
     basic(username, password) {
@@ -183,13 +171,12 @@ export default {
     },
     setSupportUserState(userState) {
       return new Promise((resolve, reject) => {
-        util.ajax(myPfuncAuthApi + stateRoute, 'POST', {
+        util.ajax(window.$supportAPI + stateRoute, 'POST', {
           headers: {
             Authorization: this.basicAuthToken
           },
           body: userState
         }).then((response) => {
-          console.log('setSupportChats',response);
           return resolve(response);
         }).catch((err) => {
           console.error('setSupportChats', err);
@@ -199,12 +186,11 @@ export default {
     },
     getSupportUserState() {
       return new Promise((resolve, reject) => {
-        util.ajax(myPfuncAuthApi + stateRoute, 'GET', {
+        util.ajax(window.$supportAPI + stateRoute, 'GET', {
           headers: {
             Authorization: this.basicAuthToken
           }
         }).then((response) => {
-          console.log('getSupportChats',response);
           return resolve(response);
         }).catch((err) => {
           console.error('getSupportChats', err)
@@ -214,15 +200,17 @@ export default {
     },
     signin() {
       this.basicAuthToken = this.basic(this.username, this.password);
-      util.ajax(myPfuncAuthApi + signInRoute, 'GET', {
+      util.ajax(window.$supportAPI + signInRoute, 'GET', {
         headers: {
           Authorization: this.basicAuthToken
         }
       }).then((response) => {
+        console.log('signin worked!', response);
         this.signedIn = true;
         EventBus.$emit('init-support-chat');
       }).catch((err) => {
         // Display a wrong password error to the user
+        console.error('signin Error', err);
       });
     }
   },
@@ -326,6 +314,10 @@ body {
     color: #FFFFFF;
     font-family: inherit;
     text-align: center;
+}
+
+.spacer {
+  padding-top: 40px;
 }
 
 /* Loading Ripple Animation */

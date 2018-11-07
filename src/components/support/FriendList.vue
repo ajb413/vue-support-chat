@@ -1,14 +1,8 @@
 <template>
   <div class="friend-list">
-    <!-- <div class="new-chat">
-      <div class="add-one-one" @click="newChat">+</div>
-      <div class="name-input">
-        <input v-model="friendUuid" type="text" placeholder="Friend's ID...">
-      </div>
-    </div> -->
     <friend-list-item
       v-for="(friend, index) of friends"
-      :key="index"
+      :key="friend.key"
       :index="index"
       :name="friend.name"
       :lastMessage="friend.lastMessage"

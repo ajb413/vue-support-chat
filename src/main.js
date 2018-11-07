@@ -17,8 +17,10 @@ Vue.config.productionTip = false;
 Vue.use(Chat, {});
 
 // Initialize ChatEngine with PubNub
-const publishKey = 'pub-c-4ca92288-26c1-4100-b321-dea259129211';
-const subscribeKey = 'sub-c-de2639ee-d969-11e8-abf2-1e598b800e69';
+const publishKey = 'pub-c-30c8dde3-6ac3-4d13-882b-2dcfed3f6ac9';
+const subscribeKey = 'sub-c-1066208a-e2da-11e8-89e8-1ed0fb765f26';
+
+window.$supportAPI = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-1066208a-e2da-11e8-89e8-1ed0fb765f26/support-state';
 
 if (!publishKey || !subscribeKey) {
     console.error('ChatEngine: PubNub Keys are missing.');

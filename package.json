@@ -33,7 +33,9 @@
       "plugin:vue/essential",
       "eslint:recommended"
     ],
-    "rules": {},
+    "rules": {
+      "no-console": ["error", { "allow": ["warn", "error", "log"] }]
+      },
     "parserOptions": {
       "parser": "babel-eslint"
     }

@@ -25,6 +25,7 @@ const mutations = {
     state.currentChat = key;
   },
   setFriends(state, {friends}) {
+
     for (let friend of friends) {
       let alreadyInArray = state.friends.find(alreadyFriend => {
         return alreadyFriend.key === friend.key;
@@ -78,7 +79,20 @@ const actions = {
 
 const getters = {
   getMyUuid: (state) => state.me.uuid,
-  getFriends: (state) => state.friends,
+  getFriends: (state) => {
+    let friends = [];
+
+    for (let friend of state.friends) {
+
+      console.log(friend, friend.name, !friend.time);
+
+      if (friend.name === 'Me') continue;
+
+      friends.push(friend);
+    }
+
+    return friends;
+  },
   getChatEngineReady: (state) => state.chatEngineReady,
 };
 

@@ -91,6 +91,7 @@ export default (request, response) => {
                     return response.send({
                         name: 'support',
                         uuid: 'support',
+                        chats: {},
                     });
                 } else {
                     response.status = 200;
