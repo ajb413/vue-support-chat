@@ -171,10 +171,6 @@ export default {
       }
 
       this.$store.dispatch('sendMessage', newMessage);
-
-      // Reset the text input
-      // event.target.value = '';
-
       if (
         messageObject &&
         messageObject.data &&
@@ -182,8 +178,6 @@ export default {
         messageObject.data.text.length > 0
       ) {
         this.newMessagesCount = this.isChatOpen ? this.newMessagesCount : this.newMessagesCount + 1
-        // this.onMessageWasSent({ author: 'support', type: 'text', data: { text } })
-        // this.messageList = [ ...this.messageList, messageObject ]
       }
     },
     handleTyping () {
@@ -198,9 +192,6 @@ export default {
         currentChatObject.typingIndicator.startTyping();
       }
     },
-    // onMessageWasSent (message) {
-      // this.messageList = [ ...this.messageList, message ]
-    // },
     openChat () {
       this.isChatOpen = true
       this.newMessagesCount = 0

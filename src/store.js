@@ -44,7 +44,6 @@ const mutations = {
     state.chats[chat.key] = chat;
   },
   CHATENGINE_message(state, {event, sender, chat = {}, data, timetoken}) {
-    // sender.uuid !== 'support' ? console.log(sender.uuid) : null;
     let key = chat.key;
 
     if (!state.chatMessages[key]) {
