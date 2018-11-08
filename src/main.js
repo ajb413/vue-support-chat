@@ -16,11 +16,11 @@ Vue.config.productionTip = false;
 // Plugin Vue Beautiful Chat for the customer UI.
 Vue.use(Chat, {});
 
-// Initialize ChatEngine with PubNub
-const publishKey = 'pub-c-30c8dde3-6ac3-4d13-882b-2dcfed3f6ac9';
-const subscribeKey = 'sub-c-1066208a-e2da-11e8-89e8-1ed0fb765f26';
+// Initialize ChatEngine with PubNub - Remember to activate ChatEngine first!
+const publishKey = '_YOUR_PUBLISH_KEY_HERE_';
+const subscribeKey = '_YOUR_SUBSCRIBE_KEY_HERE_';
 
-window.$supportAPI = 'https://pubsub.pubnub.com/v1/blocks/sub-key/sub-c-1066208a-e2da-11e8-89e8-1ed0fb765f26/support-state';
+window.$supportAPI = '_YOUR_FUNCTIONS_ENDPOINT_URL_HERE_';
 
 if (!publishKey || !subscribeKey) {
     console.error('ChatEngine: PubNub Keys are missing.');

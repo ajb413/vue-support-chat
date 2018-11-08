@@ -43,7 +43,6 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
   if ((!myUuid || !myName) && view === 'customer') {
     myUuid = util.newUuid();
     myName = util.generateName();
-    console.log('no name', myUuid, myName)
     localStorage.setItem('chat_engine_customer_uuid', myUuid);
     localStorage.setItem('chat_engine_customer_name', myName);
   }
@@ -53,10 +52,6 @@ EventBus.$on('vue-initialized-customer', ({ chatEngine, store }) => {
     uuid: myUuid,
     key: myUuid,
   };
-
-  /**
-   * Execute this function when the Vue instance is created
-   */
 
   chatEngine.connect(meState.uuid, meState, 'customer-auth-key');
 
