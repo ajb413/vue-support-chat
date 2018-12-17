@@ -2,6 +2,10 @@
 
 A full chat application for in website chat, complete with a support user interface for responding to customer outreach.
 
+## Live Demo
+- [Customer User View](https://vuejs.chat/tutorials/vue-basic-chat-module/app/#/)
+- [Support Agent User View](https://vuejs.chat/tutorials/vue-basic-chat-module/app/#/support)
+
 ## Before you clone!
 The chat is powered by ChatEngine and the authentication for support users is powered by PubNub Functions serverless microservices. For a **full, in-depth tutorial** to get this running for you, you must follow the PubNub Blog's [Vue.js Support Chat with PubNub ChatEngine](https://www.pubnub.com/blog/vuejs-chat-intercom-open-source-alternative/?devrel_gh=vue-support-chat).
 
